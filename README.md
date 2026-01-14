@@ -1,7 +1,7 @@
 A full-stack banking simulation project featuring a secure REST API backend and a modern React frontend.
 
 Tech Stack:
-Backend: C++ 20, Crow (REST API), libpqxx (PostgreSQL), jwt-cpp.
+Backend: C++ 20, Crow (REST API), libpqxx (PostgreSQL), jwt-cpp, cpr, nlohmann/json.
 Frontend: React, Vite, Framer Motion.
 Database: PostgreSQL.
 
