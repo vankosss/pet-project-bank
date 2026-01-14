@@ -33,7 +33,7 @@ Users can move funds from their main wallet to a specific savings jar. The progr
 6. Withdraw from Jar
 Flexible savings management allows withdrawing money back to the main balance without closing the jar.
 
-![withdraw jar](https://github.com/user-attachments/assets/cbeb5dba-f9d3-43e4-882f-829899a64932)
+![withdraw jar](https://github.com/user-attachments/assets/aa2e1f86-0605-4312-a953-178381b1535f)
 
 7. Break Jar
 If the goal is reached or cancelled, the jar can be broken. The entire accumulated amount is instantly returned to the main balance, and the jar is deleted.
