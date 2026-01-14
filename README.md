@@ -70,7 +70,7 @@ Admins can restore user access. Once unbanned, the user immediately regains the 
 
 ![unban](https://github.com/user-attachments/assets/9bfa007b-9b06-4068-8881-f6c9034e54e0)
 
-15. Logout
+14. Logout
 Secure session termination. The client removes the JWT token and redirects the user to the landing page.
 
 ![unlogin](https://github.com/user-attachments/assets/00f03a6f-6243-48ff-b2f0-c3ac108df5dd)
