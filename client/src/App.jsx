@@ -1,0 +1,542 @@
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaWallet, FaPiggyBank, FaHistory, FaUserCircle, FaCode, FaUsers, FaServer, FaUserShield, FaBan, FaUnlock } from 'react-icons/fa';
+import { Toaster, toast } from 'react-hot-toast';
+
+const API_URL = 'http://localhost:18080';
+const api = axios.create({ baseURL: API_URL });
+
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+export default function App() {
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [user, setUser] = useState(null); 
+  const [view, setView] = useState('landing'); 
+
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+
+  useEffect(() => {
+    if (token) {
+      api.get('/users/me').then(res => setUser(res.data)).catch(() => {
+        logout();
+      });
+    }
+  }, [token]);
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
+    setView('landing');
+    toast('See you soon!', { icon: '👋' });
+  };
+
+  const goToProfile = () => setView('dashboard');
+  const goToHome = () => setView('landing');
+
+  return (
+    <div className="app-wrapper">
+      <Toaster position="top-center" reverseOrder={false} toastOptions={{ duration: 3000 }} />
+
+      <Header 
+        user={user} 
+        onLogoClick={goToHome}
+        onLoginClick={() => { setAuthMode('login'); setShowAuth(true); }}
+        onRegClick={() => { setAuthMode('register'); setShowAuth(true); }}
+        onProfileClick={goToProfile}
+      />
+
+      <AnimatePresence mode="wait">
+        {view === 'landing' && <LandingPage key="landing" />}
+        {view === 'dashboard' && token && <Dashboard key="dashboard" user={user} logout={logout} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAuth && !token && (
+          <AuthModal 
+            mode={authMode} 
+            setMode={setAuthMode}
+            close={() => setShowAuth(false)} 
+            setToken={(t) => {
+              setToken(t);
+              setView('dashboard'); 
+            }} 
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function Header({ user, onLogoClick, onLoginClick, onRegClick, onProfileClick }) {
+  return (
+    <header style={{ background: 'white', borderBottom: '1px solid #e5e7eb', padding: '15px 0' }}>
+      <div className="container flex justify-between">
+        <div className="logo" onClick={onLogoClick}>
+          <FaWallet size={28} /> Bank
+        </div>
+
+        <div className="flex gap-4">
+          {user ? (
+            <div className="flex gap-4" style={{cursor: 'pointer'}} onClick={onProfileClick}>
+              <div className="flex gap-2 text-sec hover:text-primary transition">
+                 <span style={{fontWeight: 600}}>{user.username}</span>
+                 {user.access_rights === 'admin' ? <FaUserShield size={24} color="#ef4444" /> : <FaUserCircle size={24} color="var(--primary)" />}
+              </div>
+            </div>
+          ) : (
+            <>
+              <button className="secondary" style={{width: 'auto'}} onClick={onLoginClick}>Log In</button>
+              <button style={{width: 'auto'}} onClick={onRegClick}>Sign Up</button>
+            </>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function LandingPage() {
+  const [stats, setStats] = useState({ count_users: 0 });
+
+  useEffect(() => {
+    api.get('/main').then(res => setStats(res.data)).catch(() => {});
+  }, []);
+
+  return (
+    <motion.main 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: 60 }}
+    >
+      <div className="container">
+        <motion.h1 
+          initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+          style={{ fontSize: '3rem', marginBottom: '40px', color: '#111827' }}
+        >
+          Pet-Project <span style={{color: 'var(--primary)'}}>Bank</span>
+        </motion.h1>
+        
+        <div className="landing-lead">
+          This is a comprehensive banking simulation demonstrating secure transactions, database management, and modern web architecture created by <b>vankos</b>.
+        </div>
+
+        <div className="landing-tech-row">
+            <div className="tech-col">
+                <div className="tech-label">Backend</div>
+                <div className="tech-desc">
+                    Written by <b>vankos</b> using C++ (Crow), pqxx, nlohmann/json, jwt-cpp.
+                </div>
+            </div>
+            <div className="tech-col">
+                <div className="tech-label">Frontend</div>
+                <div className="tech-desc">
+                    Generated by <b>Gemini 3.0 PRO</b>. Stack: React, Vite, Framer Motion.
+                </div>
+            </div>
+        </div>
+
+        <div className="stat-cards-container">
+          <StatCard icon={<FaCode />} title="Stack" value="C++ 20 / React" />
+          <StatCard icon={<FaUsers />} title="Registered Clients" value={stats.count_users || 0} />
+          <StatCard icon={<FaServer />} title="Architecture" value="REST API" />
+        </div>
+      </div>
+      
+      <footer style={{ marginTop: 'auto', padding: '30px', color: '#9ca3af', width: '100%', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+        © 2026 Bank Pet Project. Created by vankos.
+      </footer>
+    </motion.main>
+  );
+}
+
+function StatCard({ icon, title, value }) {
+  return (
+    <div className="card stat-card">
+      <div style={{ color: 'var(--primary)', fontSize: '2.5rem', marginBottom: '15px' }}>{icon}</div>
+      <div className="text-sec" style={{marginBottom: 5}}>{title}</div>
+      <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>{value}</div>
+    </div>
+  );
+}
+
+function Dashboard({ user, logout }) {
+  const [profile, setProfile] = useState(user);
+  const [tab, setTab] = useState('main');
+
+  const loadUser = () => {
+    api.get('/users/me').then(res => setProfile(res.data)).catch(logout);
+  };
+
+  useEffect(() => { if(!profile) loadUser(); }, []);
+
+  if (!profile) return <div className="container text-center" style={{marginTop: 50}}>Loading profile...</div>;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container" style={{ marginTop: 30, flex: 1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: 30 }}>
+        
+        <aside>
+          <NavButton active={tab === 'main'} onClick={() => setTab('main')} label="My Accounts" icon={<FaWallet />} />
+          <NavButton active={tab === 'jars'} onClick={() => setTab('jars')} label="Savings & Goals" icon={<FaPiggyBank />} />
+          <NavButton active={tab === 'history'} onClick={() => setTab('history')} label="History" icon={<FaHistory />} />
+          {profile.access_rights === 'admin' && (
+             <NavButton active={tab === 'admin'} onClick={() => setTab('admin')} label="Admin Tools" icon={<FaUserShield />} />
+          )}
+          <div style={{marginTop: 20, borderTop: '1px solid #e5e7eb', paddingTop: 20}}>
+             <button className="danger" onClick={logout} style={{justifyContent: 'center'}}>Logout</button>
+          </div>
+        </aside>
+
+        <main>
+          <div className="card" style={{ background: 'linear-gradient(110deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none' }}>
+            <div style={{ opacity: 0.9 }}>Total Balance</div>
+            <div className="flex" style={{ alignItems: 'baseline', gap: 10, marginTop: 10 }}>
+              <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{profile.balance} $</span>
+              <span style={{ fontSize: '1.2rem', opacity: 0.8 }}>≈ {profile.balance_euro} €</span>
+            </div>
+          </div>
+
+          <AnimatePresence mode="wait">
+            <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              {tab === 'main' && <TransferTab onTransactionSuccess={loadUser} />}
+              {tab === 'jars' && <JarsTab onBalanceChange={loadUser} />}
+              {tab === 'history' && <HistoryTab />}
+              {tab === 'admin' && <AdminTab />}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+    </motion.div>
+  );
+}
+
+function NavButton({ active, onClick, label, icon }) {
+  return (
+    <button onClick={onClick} className={!active ? 'secondary' : ''} style={{ 
+      marginBottom: 10, textAlign: 'left', 
+      background: active ? 'var(--primary)' : 'white', 
+      color: active ? 'white' : 'var(--text)', 
+      border: active ? 'none' : '1px solid transparent',
+      justifyContent: 'flex-start'
+    }}>
+      {icon} {label}
+    </button>
+  );
+}
+
+function TransferTab({ onTransactionSuccess }) {
+  const [to, setTo] = useState('');
+  const [amount, setAmount] = useState('');
+  
+  const handleTransfer = async (e) => {
+    e.preventDefault();
+    if (!to || !amount) {
+        toast.error('Please fill all fields');
+        return;
+    }
+    try {
+      await api.post('/transactions', { to_username: to, amount: Number(amount) });
+      toast.success(`Successfully sent ${amount}$ to ${to}`);
+      setTo(''); setAmount('');
+      onTransactionSuccess(); 
+    } catch (err) { 
+      toast.error(err.response?.data || 'Transfer failed'); 
+    }
+  };
+  
+  return (
+    <div className="card">
+      <h3>Quick Transfer</h3>
+      <form onSubmit={handleTransfer} className="flex gap-4">
+        <input style={{flex: 2, margin: 0}} placeholder="Username" value={to} onChange={e => setTo(e.target.value)} />
+        <input style={{flex: 1, margin: 0}} type="number" placeholder="Amount $" value={amount} onChange={e => setAmount(e.target.value)} />
+        <button style={{width: 'auto'}} type="submit">Send</button>
+      </form>
+    </div>
+  );
+}
+
+function JarsTab({ onBalanceChange }) {
+  const [jars, setJars] = useState([]);
+  const [newJar, setNewJar] = useState({ name: '', target: '', amount: '' });
+  const [selectedJar, setSelectedJar] = useState(null);
+
+  useEffect(() => { load(); }, []);
+  const load = () => api.get('/jars').then(res => setJars(res.data.jars || []));
+
+  const create = async (e) => {
+    e.preventDefault();
+    if (!newJar.name.trim() || !newJar.target.trim() || !newJar.amount) {
+        toast.error('All fields are required!');
+        return;
+    }
+
+    try {
+        await api.post('/jars', { name: newJar.name, target: newJar.target, accumulation_amount: Number(newJar.amount) });
+        toast.success('New Jar created! 🎯');
+        setNewJar({ name: '', target: '', amount: '' });
+        load();
+    } catch (err) {
+        toast.error(err.response?.data || 'Failed to create jar');
+    }
+  };
+
+  return (
+    <div>
+      <div className="card">
+        <h3>Create New Goal</h3>
+        <form onSubmit={create} className="flex gap-4">
+          <input style={{flex:1, margin:0}} placeholder="Name" value={newJar.name} onChange={e => setNewJar({...newJar, name: e.target.value})} />
+          <input style={{flex:1, margin:0}} placeholder="Description" value={newJar.target} onChange={e => setNewJar({...newJar, target: e.target.value})} />
+          <input style={{width:100, margin:0}} type="number" placeholder="$ Goal" value={newJar.amount} onChange={e => setNewJar({...newJar, amount: e.target.value})} />
+          <button style={{width:'auto'}} type="submit">+</button>
+        </form>
+      </div>
+
+      <div className="jars-grid">
+        {jars.map(jar => (
+          <div 
+            key={jar.id} 
+            className="card jar-item" 
+            style={{ marginBottom: 0 }}
+            onClick={() => setSelectedJar(jar)}
+          >
+            <div className="flex justify-between"><b>{jar.jar_name}</b><FaPiggyBank color="var(--primary)" /></div>
+            <div className="text-sec text-sm" style={{marginBottom:10}}>{jar.jar_target}</div>
+            <div style={{height:6, background:'#f3f4f6', borderRadius:3, marginBottom:10}}><div style={{height:'100%', background:'var(--primary)', width:`${Math.min((jar.jar_balance/jar.jar_accumulation_amount)*100,100)}%`}}></div></div>
+            <div className="flex justify-between font-bold"><span>{jar.jar_balance} $</span><span className="text-sec" style={{fontWeight:400}}>of {jar.jar_accumulation_amount}</span></div>
+          </div>
+        ))}
+      </div>
+
+      {selectedJar && (
+        <JarActionModal 
+          jar={selectedJar} 
+          close={() => setSelectedJar(null)} 
+          refreshJars={load} 
+          refreshBalance={onBalanceChange} 
+        />
+      )}
+    </div>
+  );
+}
+
+function JarActionModal({ jar, close, refreshJars, refreshBalance }) {
+  const [amount, setAmount] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleAction = async (type) => {
+    if (!amount) {
+        toast.error('Please enter amount');
+        return;
+    }
+    try {
+      await api.post(`/jars/${jar.id}/transactions`, { type, amount: Number(amount) });
+      toast.success(`Money ${type === 'deposit' ? 'saved' : 'withdrawn'}!`);
+      refreshJars();
+      refreshBalance();
+      close();
+    } catch (err) {
+      toast.error(err.response?.data || 'Error');
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+        await api.delete(`/jars/${jar.id}`);
+        toast.success('Jar broken! Money returned.');
+        refreshJars();
+        refreshBalance();
+        close();
+    } catch(err) {
+        toast.error(err.response?.data || 'Error deleting jar');
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={close}>
+      <motion.div 
+        initial={{ scale: 0.9 }} animate={{ scale: 1 }}
+        className="modal-content" 
+        onClick={e => e.stopPropagation()}
+      >
+        <button className="close-btn" onClick={close}>&times;</button>
+        <h3 className="text-center" style={{marginBottom: 20}}>{jar.jar_name}</h3>
+        <p className="text-center text-sec">Balance: {jar.jar_balance} $</p>
+
+        {isDeleting ? (
+            <div className="text-center" style={{marginTop: 30}}>
+                <p style={{color: 'var(--text)', marginBottom: 20}}>
+                    Are you sure you want to break this jar? <br/>
+                    <b>{jar.jar_balance} $</b> will be returned to your account.
+                </p>
+                <div className="flex gap-2" style={{justifyContent: 'center'}}>
+                      <button className="danger" style={{flex: 1}} onClick={handleDelete}>Yes, Break it!</button>
+                      <button className="secondary" style={{flex: 1}} onClick={() => setIsDeleting(false)}>Cancel</button>
+                </div>
+            </div>
+        ) : (
+            <>
+                <input 
+                  type="number" 
+                  placeholder="Amount $" 
+                  value={amount} 
+                  onChange={e => setAmount(e.target.value)} 
+                  autoFocus
+                  style={{marginTop: 15}}
+                />
+
+                <div className="flex gap-2" style={{marginTop: 20}}>
+                      <button style={{flex: 1}} onClick={() => handleAction('deposit')}>Deposit</button>
+                      <button className="secondary" style={{flex: 1}} onClick={() => handleAction('withdraw')}>Withdraw</button>
+                      <button className="danger" style={{flex: 1}} onClick={() => setIsDeleting(true)}>Break Jar</button>
+                </div>
+            </>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+function HistoryTab() {
+  const [txs, setTxs] = useState([]);
+  useEffect(() => { api.get('/transactions').then(res => setTxs(res.data.transactions_history || [])); }, []);
+  return (
+    <div className="card">
+      <h3>Transaction History</h3>
+      <table style={{width:'100%'}}><tbody>
+        {txs.map((t, i) => (
+          <tr key={i} style={{borderBottom:'1px solid #f3f4f6'}}>
+            <td style={{padding:'12px 0'}}><div style={{fontWeight:600}}>{t.type === 'incoming' ? t.sender : t.receiver}</div><div className="text-sm text-sec">{t.date} {t.time}</div></td>
+            <td style={{textAlign:'right', fontWeight:'bold', color: t.type === 'incoming' ? 'var(--primary)' : 'var(--text)'}}>{t.type === 'incoming' ? '+' : '-'}{Math.abs(t.amount)} $</td>
+          </tr>
+        ))}
+      </tbody></table>
+    </div>
+  );
+}
+
+function AdminTab() {
+    const [targetUser, setTargetUser] = useState('');
+    const [reason, setReason] = useState('');
+    const [action, setAction] = useState('ban'); 
+
+    const handleExecute = async (e) => {
+        e.preventDefault();
+        if(!targetUser || !reason) {
+            toast.error('Username and reason required');
+            return;
+        }
+
+        const isBan = action === 'ban';
+        const payload = isBan 
+            ? { is_banned: true, reason: reason } 
+            : { is_banned: false, unban_reason: reason };
+
+        try {
+            await api.patch(`/users/${targetUser}`, payload);
+            toast.success(`User ${targetUser} has been ${isBan ? 'BANNED 🚫' : 'UNBANNED ✅'}`);
+            setTargetUser(''); setReason('');
+        } catch(err) {
+            toast.error(err.response?.data || 'Admin action failed');
+        }
+    };
+
+    return (
+        <div className="card" style={{border: '1px solid #fee2e2'}}>
+            <h3 className="flex gap-2" style={{color: '#ef4444'}}><FaUserShield /> Admin Panel</h3>
+            <p className="text-sec text-sm" style={{marginBottom: 20}}>Manage user access. Be careful, this affects real users.</p>
+            
+            <form onSubmit={handleExecute}>
+                <div className="flex gap-4" style={{marginBottom: 15}}>
+                    <button 
+                        type="button"
+                        className={action === 'ban' ? 'danger' : 'secondary'} 
+                        onClick={() => setAction('ban')}
+                        style={{flex: 1}}
+                    >
+                        <FaBan /> Ban User
+                    </button>
+                    <button 
+                        type="button"
+                        className={action === 'unban' ? '' : 'secondary'} 
+                        onClick={() => setAction('unban')}
+                        style={{flex: 1, background: action === 'unban' ? '#10b981' : '', color: action === 'unban' ? 'white' : ''}}
+                    >
+                        <FaUnlock /> Unban User
+                    </button>
+                </div>
+
+                <input 
+                    placeholder="Target Username" 
+                    value={targetUser} 
+                    onChange={e => setTargetUser(e.target.value)} 
+                    style={{borderColor: action === 'ban' ? '#fca5a5' : '#6ee7b7'}}
+                />
+                
+                <input 
+                    placeholder={action === 'ban' ? "Reason for ban (e.g. Fraud)" : "Reason for unban (e.g. Amnesty)"} 
+                    value={reason} 
+                    onChange={e => setReason(e.target.value)} 
+                />
+                
+                <button type="submit" className={action === 'ban' ? 'danger' : ''}>
+                    Execute {action.toUpperCase()}
+                </button>
+            </form>
+        </div>
+    );
+}
+
+function AuthModal({ mode, setMode, close, setToken }) {
+  const [form, setForm] = useState({ username: '', password: '' });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.username || !form.password) {
+        toast.error('Enter username and password');
+        return;
+    }
+    try {
+      const endpoint = mode === 'register' ? '/users' : '/tokens';
+      const res = await api.post(endpoint, form);
+      if (mode === 'register') {
+        toast.success('Registration successful! Please login.');
+        setMode('login');
+      } else {
+        localStorage.setItem('token', res.data.token);
+        setToken(res.data.token);
+        toast.success(`Welcome back, ${form.username}!`);
+        close();
+      }
+    } catch (err) { 
+        toast.error(err.response?.data || 'Auth Error'); 
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        className="card" style={{ width: '400px', position: 'relative', margin: 0 }}
+      >
+        <button onClick={close} className="close-btn">&times;</button>
+        <h2 className="text-center" style={{marginBottom: 20}}>{mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
+        <form onSubmit={handleSubmit}>
+          <input placeholder="Username" autoFocus value={form.username} onChange={e => setForm({...form, username: e.target.value})} />
+          <input type="password" placeholder="Password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+          <button type="submit" style={{ marginTop: 10 }}>{mode === 'login' ? 'Login' : 'Sign Up'}</button>
+        </form>
+        <p className="text-center text-sm" style={{ marginTop: 20, cursor: 'pointer', color: 'var(--primary)' }} onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
+           {mode === 'login' ? 'No account? Sign Up' : 'Have account? Login'}
+        </p>
+      </motion.div>
+    </div>
+  );
+}

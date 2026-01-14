@@ -1,0 +1,12 @@
+{
+  "name": "bank",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "nlohmann-json",
+    "cpr",
+    "libpqxx",
+    "crow",
+    "jwt-cpp",
+    "openssl"
+  ]
+}
